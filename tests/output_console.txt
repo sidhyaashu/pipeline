@@ -1,0 +1,595 @@
+=== FULL TEST SUITE CONSOLE LOG ===
+Started at: 2026-05-11 11:46:36
+
+
+============================================================
+STEP: CleanUp | Cleaning up old test containers and volumes
+CMD: docker-compose -f tests/docker-compose.test.yml down -v
+============================================================
+
+--- STDOUT ---
+
+--- STDERR ---
+ Container pipeline_init_db Stopping 
+ Container pipeline_mock_api Stopping 
+ Container pipeline_init_db Stopped 
+ Container pipeline_init_db Removing 
+ Container pipeline_init_db Removed 
+ Container pipeline_db_test Stopping 
+ Container pipeline_db_test Stopped 
+ Container pipeline_db_test Removing 
+ Container pipeline_db_test Removed 
+ Container pipeline_mock_api Stopped 
+ Container pipeline_mock_api Removing 
+ Container pipeline_mock_api Removed 
+ Network tests_default Removing 
+ Network tests_default Removed 
+
+------------------------------------------------------------
+   PASS: CleanUp completed in 2.02s
+
+============================================================
+STEP: StartDB | Ensuring test database is running
+CMD: docker-compose -f tests/docker-compose.test.yml up -d db_test
+============================================================
+
+--- STDOUT ---
+
+--- STDERR ---
+ Network tests_default Creating 
+ Network tests_default Created 
+ Container pipeline_db_test Creating 
+ Container pipeline_db_test Created 
+ Container pipeline_db_test Starting 
+ Container pipeline_db_test Started 
+
+------------------------------------------------------------
+   PASS: StartDB completed in 0.94s
+
+============================================================
+STEP: DataGen | Generating malformed test data
+CMD: python tests/generate_penetration_data.py
+============================================================
+
+--- STDOUT ---
+Generated 9 penetration test cases in tests/data/penetration
+
+--- STDERR ---
+
+------------------------------------------------------------
+   PASS: DataGen completed in 0.13s
+
+Waiting for database to be ready on 127.0.0.1:5432...
+✅ Database is reachable.
+
+============================================================
+STEP: InitDB | Applying schemas and tracking tables
+CMD: python tests/init_test_db.py
+============================================================
+
+--- STDOUT ---
+
+============================================================
+
+--- STDERR ---
+Traceback (most recent call last):
+  File "C:\Users\ashut\Devlopments\investKode\Projects\pipeline\tests\init_test_db.py", line 66, in <module>
+    init_db()
+    ~~~~~~~^^
+  File "C:\Users\ashut\Devlopments\investKode\Projects\pipeline\tests\init_test_db.py", line 18, in init_db
+    print("\U0001f6e0\ufe0f  INITIALIZING TEST DATABASE")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ashut\AppData\Local\Programs\Python\Python313\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 0-1: character maps to <undefined>
+
+------------------------------------------------------------
+   FAIL: InitDB failed (Code: 1)
+
+============================================================
+STEP: FastETL | Testing direct file loading (Fast ETL)
+CMD: python etl.py
+============================================================
+
+--- STDOUT ---
+
+--- STDERR ---
+11:46:46 | INFO    | 
+===================================
+11:46:46 | INFO    |   FINANCIAL DATABASE ??? FAST PRODUCTION ETL
+11:46:46 | INFO    | ===================================
+
+11:46:46 | INFO    | ??? Database connection successful
+11:46:46 | INFO    | ??? Database connection successful
+
+11:46:46 | INFO    | ----------------------------------------------------------------------------------------------------
+11:46:46 | INFO    |   STEP 1: CREATING TABLES FROM SQL SCHEMA FILES
+11:46:46 | INFO    | ----------------------------------------------------------------------------------------------------
+11:46:46 | INFO    |     PASS: Industrymaster_Ex1.sql         -> Table: Industrymaster_Ex1
+11:46:46 | INFO    |     PASS: Housemaster.sql                -> Table: Housemaster
+11:46:46 | INFO    |     PASS: Stockexchangemaster.sql        -> Table: Stockexchangemaster
+11:46:46 | INFO    |     PASS: Registrarmaster.sql            -> Table: Registrarmaster
+11:46:46 | INFO    |     PASS: Shp_catmaster_2.sql            -> Table: Shp_catmaster_2
+11:46:46 | INFO    |     PASS: Company_master.sql             -> Table: Company_Master
+11:46:46 | INFO    |     PASS: Companyaddress.sql             -> Table: Companyaddress
+11:46:46 | INFO    |     PASS: Board.sql                      -> Table: Board
+11:46:46 | INFO    |     PASS: Registrardata.sql              -> Table: Registrardata
+11:46:46 | INFO    |     PASS: Complistings.sql               -> Table: Complistings
+11:46:46 | INFO    |     PASS: Finance_bs.sql                 -> Table: Finance_bs
+11:46:46 | INFO    |     PASS: Finance_cons_bs.sql            -> Table: Finance_cons_bs
+11:46:46 | INFO    |     PASS: Finance_pl.sql                 -> Table: Finance_pl
+11:46:46 | INFO    |     PASS: Finance_cons_pl.sql            -> Table: Finance_cons_pl
+11:46:47 | INFO    |     PASS: Finance_cf.sql                 -> Table: Finance_cf
+11:46:47 | INFO    |     PASS: Finance_cons_cf.sql            -> Table: Finance_cons_cf
+11:46:47 | INFO    |     PASS: Finance_fr.sql                 -> Table: Finance_fr
+11:46:47 | INFO    |     PASS: Finance_cons_fr.sql            -> Table: Finance_cons_fr
+11:46:47 | INFO    |     PASS: Resultsf_IND_Ex1.sql           -> Table: Resultsf_IND_Ex1
+11:46:47 | INFO    |     PASS: Resultsf_IND_Cons_Ex1.sql      -> Table: Resultsf_IND_Cons_Ex1
+11:46:47 | INFO    |     PASS: company_equity.sql             -> Table: company_equity
+11:46:47 | INFO    |     PASS: company_equity_cons.sql        -> Table: company_equity_cons
+11:46:47 | INFO    |     PASS: Shpsummary.sql                 -> Table: Shpsummary
+11:46:47 | INFO    |     PASS: Shp_details.sql                -> Table: Shp_details
+11:46:47 | INFO    |     PASS: Monthlyprice.sql               -> Table: Monthlyprice
+11:46:47 | INFO    |     PASS: Nse_Monthprice.sql             -> Table: Nse_Monthprice
+11:46:47 | INFO    | 
+  Summary: 26 created, 0 failed
+
+11:46:47 | INFO    | ======================================================================
+11:46:47 | INFO    |   STEP 2: STRUCTURAL AUDIT (JSON keys vs SQL columns)
+11:46:47 | INFO    |   STEP 3: FULL DATA LOAD (COPY + STAGING + MERGE)
+11:46:47 | INFO    | ======================================================================
+11:46:47 | INFO    |   ???  ??? Structure: Perfect column match (6 cols incl flag)
+11:46:47 | INFO    |   ???  ??? FULL LOAD: Upserted 141 rows, deleted 0 rows successfully
+11:46:47 | INFO    |   ???  ??? Structure: Perfect column match (3 cols incl flag)
+11:46:47 | INFO    |   ???  ??? FULL LOAD: Upserted 847 rows, deleted 0 rows successfully
+11:46:47 | INFO    |   ???  ??? Structure: Perfect column match (3 cols incl flag)
+11:46:47 | INFO    |   ???  ??? FULL LOAD: Upserted 42 rows, deleted 0 rows successfully
+11:46:47 | INFO    |   ???  ??? Structure: Perfect column match (11 cols incl flag)
+11:46:47 | INFO    |   ???  ??? FULL LOAD: Upserted 1761 rows, deleted 0 rows successfully
+11:46:47 | INFO    |   ???  ??? Structure: Perfect column match (4 cols incl flag)
+11:46:47 | INFO    |   ???  ??? FULL LOAD: Upserted 7 rows, deleted 0 rows successfully
+11:46:48 | INFO    |   ???  ??? Structure: Perfect column match (29 cols incl flag)
+11:46:51 | INFO    |   ???  ??? FULL LOAD: Upserted 55104 rows, deleted 0 rows successfully
+11:46:51 | INFO    |   ???  ??? Structure: Perfect column match (12 cols incl flag)
+11:46:51 | ERROR   |   ???  ??? LOAD FAILED: (psycopg2.errors.ForeignKeyViolation) insert or update on table "companyaddress" violates foreign key constraint "companyaddress_fincode_fkey"
+11:46:52 | INFO    |   ???  ??? Structure: Perfect column match (13 cols incl flag)
+11:46:53 | ERROR   |   ???  ??? LOAD FAILED: (psycopg2.errors.ForeignKeyViolation) insert or update on table "board" violates foreign key constraint "board_fincode_fkey"
+11:46:53 | INFO    |   ???  ??? Structure: Perfect column match (3 cols incl flag)
+11:46:54 | ERROR   |   ???  ??? LOAD FAILED: (psycopg2.errors.ForeignKeyViolation) insert or update on table "registrardata" violates foreign key constraint "registrardata_fincode_fkey"
+11:46:54 | INFO    |   ???  ??? Structure: Perfect column match (3 cols incl flag)
+11:46:54 | ERROR   |   ???  ??? LOAD FAILED: (psycopg2.errors.ForeignKeyViolation) insert or update on table "complistings" violates foreign key constraint "complistings_fincode_fkey"
+11:47:13 | ERROR   |   ???  ??? LOAD FAILED: (psycopg2.errors.ForeignKeyViolation) insert or update on table "finance_bs" violates foreign key constraint "finance_bs_fincode_fkey"
+11:47:25 | ERROR   |   ???  ??? LOAD FAILED: (psycopg2.errors.ForeignKeyViolation) insert or update on table "finance_cons_bs" violates foreign key constraint "finance_cons_bs_fincode_fkey"
+11:47:51 | ERROR   |   ???  ??? LOAD FAILED: (psycopg2.errors.ForeignKeyViolation) insert or update on table "finance_pl" violates foreign key constraint "finance_pl_fincode_fkey"
+11:47:57 | ERROR   |   ???  ??? LOAD FAILED: (psycopg2.errors.ForeignKeyViolation) insert or update on table "finance_cons_pl" violates foreign key constraint "finance_cons_pl_fincode_fkey"
+11:47:58 | INFO    |   ???  ??? Structure: Perfect column match (23 cols incl flag)
+11:48:00 | ERROR   |   ???  ??? LOAD FAILED: (psycopg2.errors.ForeignKeyViolation) insert or update on table "finance_cf" violates foreign key constraint "finance_cf_fincode_fkey"
+11:48:00 | INFO    |   ???  ??? Structure: Perfect column match (23 cols incl flag)
+11:48:01 | ERROR   |   ???  ??? LOAD FAILED: (psycopg2.errors.ForeignKeyViolation) insert or update on table "finance_cons_cf" violates foreign key constraint "finance_cons_cf_fincode_fkey"
+11:48:08 | INFO    |   ???  ??? Structure: Perfect column match (146 cols incl flag)
+11:48:14 | ERROR   |   ???  ??? LOAD FAILED: (psycopg2.errors.ForeignKeyViolation) insert or update on table "finance_fr" violates foreign key constraint "finance_fr_fincode_fkey"
+11:48:16 | INFO    |   ???  ??? Structure: Perfect column match (146 cols incl flag)
+11:48:20 | ERROR   |   ???  ??? LOAD FAILED: (psycopg2.errors.ForeignKeyViolation) insert or update on table "finance_cons_fr" violates foreign key constraint "finance_cons_fr_fincode_fkey"
+11:49:00 | INFO    |   ???  ??? Structure: Perfect column match (157 cols incl flag)
+11:49:25 | ERROR   |   ???  ??? LOAD FAILED: (psycopg2.errors.ForeignKeyViolation) insert or update on table "resultsf_ind_ex1" violates foreign key constraint "resultsf_ind_ex1_fincode_fkey"
+11:49:52 | ERROR   |   ???  ??? LOAD FAILED: (psycopg2.errors.ForeignKeyViolation) insert or update on table "resultsf_ind_cons_ex1" violates foreign key constraint "resultsf_ind_cons_ex1_fincode_fkey"
+11:49:52 | INFO    |   ???  ??? Structure: Perfect column match (24 cols incl flag)
+11:49:53 | ERROR   |   ???  ??? LOAD FAILED: (psycopg2.errors.ForeignKeyViolation) insert or update on table "company_equity" violates foreign key constraint "company_equity_fincode_fkey"
+11:49:53 | INFO    |   ???  ??? Structure: Perfect column match (24 cols incl flag)
+11:49:53 | ERROR   |   ???  ??? LOAD FAILED: (psycopg2.errors.ForeignKeyViolation) insert or update on table "company_equity_cons" violates foreign key constraint "company_equity_cons_fincode_fkey"
+11:50:13 | INFO    |   ???  ??? Structure: Perfect column match (370 cols incl flag)
+11:50:31 | ERROR   |   ???  ??? LOAD FAILED: (psycopg2.errors.ForeignKeyViolation) insert or update on table "shpsummary" violates foreign key constraint "shpsummary_fincode_fkey"
+11:50:44 | INFO    |   ???  ??? Structure: Perfect column match (10 cols incl flag)
+11:51:26 | ERROR   |   ???  ??? LOAD FAILED: (psycopg2.errors.ForeignKeyViolation) insert or update on table "shp_details" violates foreign key constraint "shp_details_fincode_fkey"
+11:51:27 | INFO    |   ???  ??? Structure: Perfect column match (11 cols incl flag)
+11:51:28 | ERROR   |   ???  ??? LOAD FAILED: (psycopg2.errors.ForeignKeyViolation) insert or update on table "monthlyprice" violates foreign key constraint "monthlyprice_fincode_fkey"
+11:51:28 | INFO    |   ???  ??? Structure: Perfect column match (11 cols incl flag)
+11:51:28 | ERROR   |   ???  ??? LOAD FAILED: (psycopg2.errors.ForeignKeyViolation) insert or update on table "nse_monthprice" violates foreign key constraint "nse_monthprice_fincode_fkey"
+11:51:28 | INFO    | 
+======================================================================
+11:51:28 | INFO    |   FINAL REPORT
+11:51:28 | INFO    | ======================================================================
+11:51:28 | INFO    | 
+  File                                Table                          Structure       Load       Rows        
+11:51:28 | INFO    |   ????????????????????????????????????????????????????????????????????????????????????????????????????????? ?????????????????????????????????????????????????????????????????????????????????????????? ????????????????????????????????????????????? ?????????????????????????????? ????????????????????????????????????
+11:51:28 | INFO    |   Industrymaster_Ex1.txt              industrymaster_ex1             ??? MATCH       ??? PASS   141         
+11:51:28 | INFO    |   Housemaster.txt                     housemaster                    ??? MATCH       ??? PASS   847         
+11:51:28 | INFO    |   Stockexchangemaster.txt             stockexchangemaster            ??? MATCH       ??? PASS   42          
+11:51:28 | INFO    |   Registrarmaster.txt                 registrarmaster                ??? MATCH       ??? PASS   1761        
+11:51:28 | INFO    |   Shp_catmaster_2.txt                 shp_catmaster_2                ??? MATCH       ??? PASS   7           
+11:51:28 | INFO    |   Company_master.txt                  company_master                 ??? MATCH       ??? PASS   55104       
+11:51:28 | INFO    |   Companyaddress.txt                  companyaddress                 ??? MATCH       ??? FAIL   0           
+11:51:28 | INFO    |   Board.txt                           board                          ??? MATCH       ??? FAIL   0           
+11:51:28 | INFO    |   Registrardata.txt                   registrardata                  ??? MATCH       ??? FAIL   0           
+11:51:28 | INFO    |   Complistings.txt                    complistings                   ??? MATCH       ??? FAIL   0           
+11:51:28 | INFO    |   Finance_bs.txt                      finance_bs                     ?????? MISMATCH ??? FAIL   0           
+11:51:28 | INFO    |   Finance_cons_bs.txt                 finance_cons_bs                ?????? MISMATCH ??? FAIL   0           
+11:51:28 | INFO    |   Finance_pl.txt                      finance_pl                     ?????? MISMATCH ??? FAIL   0           
+11:51:28 | INFO    |   Finance_cons_pl.txt                 finance_cons_pl                ?????? MISMATCH ??? FAIL   0           
+11:51:28 | INFO    |   Finance_cf.txt                      finance_cf                     ??? MATCH       ??? FAIL   0           
+11:51:28 | INFO    |   Finance_cons_cf.txt                 finance_cons_cf                ??? MATCH       ??? FAIL   0           
+11:51:28 | INFO    |   Finance_fr.txt                      finance_fr                     ??? MATCH       ??? FAIL   0           
+11:51:28 | INFO    |   Finance_cons_fr.txt                 finance_cons_fr                ??? MATCH       ??? FAIL   0           
+11:51:28 | INFO    |   Resultsf_IND_Ex1.txt                resultsf_ind_ex1               ??? MATCH       ??? FAIL   0           
+11:51:28 | INFO    |   Resultsf_IND_Cons_Ex1.txt           resultsf_ind_cons_ex1          ?????? MISMATCH ??? FAIL   0           
+11:51:28 | INFO    |   company_equity.txt                  company_equity                 ??? MATCH       ??? FAIL   0           
+11:51:28 | INFO    |   company_equity_cons.txt             company_equity_cons            ??? MATCH       ??? FAIL   0           
+11:51:28 | INFO    |   Shpsummary.txt                      shpsummary                     ??? MATCH       ??? FAIL   0           
+11:51:28 | INFO    |   Shp_details.txt                     shp_details                    ??? MATCH       ??? FAIL   0           
+11:51:28 | INFO    |   Monthlyprice.txt                    monthlyprice                   ??? MATCH       ??? FAIL   0           
+11:51:28 | INFO    |   Nse_Monthprice.txt                  nse_monthprice                 ??? MATCH       ??? FAIL   0           
+11:51:28 | INFO    | 
+  ??????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+11:51:28 | INFO    |   Tables Created:      26/26
+11:51:28 | INFO    |   Structure Warnings:  1
+11:51:28 | INFO    |   Load Pass:           6/26
+11:51:28 | INFO    |   Load Fail:           20/26
+11:51:28 | INFO    |   ??????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+
+
+------------------------------------------------------------
+   PASS: FastETL completed in 283.40s
+
+============================================================
+STEP: Penetration | Simulating API ingestion with malformed data
+CMD: docker-compose -f tests/docker-compose.test.yml run --rm penetration_test
+============================================================
+
+--- STDOUT ---
+
+--- STDERR ---
+ Container pipeline_db_test Running 
+ Container pipeline_mock_api Creating 
+ Container pipeline_init_db Creating 
+ Container pipeline_init_db Created 
+ Container pipeline_mock_api Created 
+ Container pipeline_mock_api Starting 
+ Container pipeline_db_test Waiting 
+ Container pipeline_mock_api Started 
+ Container pipeline_db_test Healthy 
+ Container pipeline_init_db Starting 
+ Container pipeline_init_db Started 
+ Container pipeline_init_db Waiting 
+ Container pipeline_init_db Exited 
+ Container tests-penetration_test-run-bd0cfbd4a361 Creating 
+ Container tests-penetration_test-run-bd0cfbd4a361 Created 
+Traceback (most recent call last):
+  File "/app/tests/full_simulation_service.py", line 6, in <module>
+    import app.api_main
+ModuleNotFoundError: No module named 'app'
+
+
+------------------------------------------------------------
+   FAIL: Penetration failed (Code: 1)
+
+============================================================
+STEP: ManualAPI | Testing manual single-feed ingestion
+CMD: docker-compose -f tests/docker-compose.test.yml run --rm api_manual_test
+============================================================
+
+--- STDOUT ---
+2026-05-11 06:21:41 - pipeline - INFO - Database connection successful
+2026-05-11 06:21:41 - pipeline - INFO - Starting ingestion for date=10052024 [context=manual, window=daily]
+2026-05-11 06:21:41 - pipeline - INFO - Feeds: ['Industrymaster_Ex1', 'Housemaster', 'Stockexchangemaster', 'Registrarmaster', 'Shp_catmaster_2', 'Company_master', 'Companyaddress', 'Board', 'Registrardata', 'Finance_bs', 'Finance_cons_bs', 'Finance_pl', 'Finance_cons_pl', 'Finance_cf', 'Finance_cons_cf', 'Finance_fr', 'Finance_cons_fr', 'Resultsf_IND_Ex1', 'Resultsf_IND_Cons_Ex1', 'company_equity', 'company_equity_cons', 'Complistings', 'Shpsummary', 'Shp_details', 'Monthlyprice', 'Nse_Monthprice']
+2026-05-11 06:21:41 - pipeline - INFO - Processing Feed: Industrymaster_Ex1
+2026-05-11 06:21:41 - pipeline - DEBUG - Industrymaster_Ex1: DataFrame columns received: ['Ind_code', 'Industry', 'Ind_shortname', 'Sector', 'Sector_code', 'Flag']
+2026-05-11 06:21:41 - pipeline - INFO - Success Industrymaster_Ex1: received=141, upserted=0, deleted=0, rejected=0
+2026-05-11 06:21:41 - pipeline - INFO - Processing Feed: Housemaster
+2026-05-11 06:21:41 - pipeline - DEBUG - Housemaster: DataFrame columns received: ['HOUSE_CODE', 'HOUSE', 'Flag']
+2026-05-11 06:21:41 - pipeline - INFO - Success Housemaster: received=847, upserted=0, deleted=0, rejected=0
+2026-05-11 06:21:41 - pipeline - INFO - Processing Feed: Stockexchangemaster
+2026-05-11 06:21:41 - pipeline - DEBUG - Stockexchangemaster: DataFrame columns received: ['STK_ID', 'STK_NAME', 'Flag']
+2026-05-11 06:21:41 - pipeline - INFO - Success Stockexchangemaster: received=42, upserted=0, deleted=0, rejected=0
+2026-05-11 06:21:41 - pipeline - INFO - Processing Feed: Registrarmaster
+2026-05-11 06:21:41 - pipeline - DEBUG - Registrarmaster: DataFrame columns received: ['RegistrarNo', 'RegistrarName', 'RegAddress', 'RegistrarAddress1', 'RegistrarAddress2', 'RegistrarAddress3', 'RegistrarPhone', 'RegistrarFax', 'RegistrarEMail', 'RegistrarWebSite', 'Flag']
+2026-05-11 06:21:42 - pipeline - INFO - Success Registrarmaster: received=1761, upserted=1738, deleted=0, rejected=0
+2026-05-11 06:21:42 - pipeline - INFO - Processing Feed: Shp_catmaster_2
+2026-05-11 06:21:42 - pipeline - DEBUG - Shp_catmaster_2: DataFrame columns received: ['SHP_CATID', 'SHP_CATNAME', 'SUB_CATEGORY', 'Flag']
+2026-05-11 06:21:42 - pipeline - INFO - Success Shp_catmaster_2: received=7, upserted=3, deleted=0, rejected=0
+2026-05-11 06:21:42 - pipeline - INFO - Processing Feed: Company_master
+2026-05-11 06:21:47 - pipeline - DEBUG - Company_master: DataFrame columns received: ['FINCODE', 'SCRIPCODE', 'SCRIP_NAME', 'SCRIP_GROUP', 'COMPNAME', 'IND_CODE', 'Industry', 'HSE_CODE', 'House', 'SYMBOL', 'SERIES', 'ISIN', 'S_NAME', 'RFORMAT', 'FFORMAT', 'CHAIRMAN', 'MDIR', 'COSEC', 'INC_MONTH', 'INC_YEAR', 'FV', 'Status', 'Sublisting', 'Bse_Scrip_ID', 'Securitytoken', 'CIN', 'Bse_sublisting', 'Nse_sublisting', 'Flag']
+2026-05-11 06:21:48 - pipeline - ERROR - Failed feed=Company_master: invalid input syntax for type integer: ""
+CONTEXT:  COPY stg_company_master_5661b01fa8, line 11, column securitytoken: ""
+
+2026-05-11 06:21:48 - pipeline - INFO - Processing Feed: Companyaddress
+2026-05-11 06:21:49 - pipeline - DEBUG - Companyaddress: DataFrame columns received: ['FINCODE', 'ADD1', 'ADD2', 'ADD3', 'CITY_NAME', 'PINCODE', 'STATE_NAME', 'PHONE', 'FAX_NO', 'WEBSITE', 'E_MAIL', 'Flag']
+2026-05-11 06:21:49 - pipeline - INFO - Success Companyaddress: received=11190, upserted=11189, deleted=0, rejected=1
+2026-05-11 06:21:49 - pipeline - INFO - Processing Feed: Board
+2026-05-11 06:21:52 - pipeline - DEBUG - Board: DataFrame columns received: ['FINCODE', 'YRC', 'SERIALNO', 'DIRTYPE_ID', 'SRNO', 'EFFECT_DATE', 'DIRNAME', 'DIRREM', 'Reported_DSG', 'REM_UNIT', 'Independent', 'DirectorId', 'FLAG']
+2026-05-11 06:21:53 - pipeline - ERROR - Failed feed=Board: invalid input syntax for type timestamp: ""
+CONTEXT:  COPY stg_board_d98a2de837, line 1, column effect_date: ""
+
+2026-05-11 06:21:53 - pipeline - INFO - Processing Feed: Registrardata
+2026-05-11 06:21:53 - pipeline - DEBUG - Registrardata: DataFrame columns received: ['FINCODE', 'RegistrarNo', 'Flag']
+2026-05-11 06:21:53 - pipeline - INFO - Success Registrardata: received=8914, upserted=8913, deleted=0, rejected=1
+2026-05-11 06:21:53 - pipeline - INFO - Processing Feed: Finance_bs
+2026-05-11 06:24:00 - pipeline - ERROR - Failed feed=Finance_bs: (psycopg2.errors.ProgramLimitExceeded) total size of jsonb array elements exceeds the maximum of 268435455 bytes
+LINE 5: ...          ('Finance_bs', '2024-05-10'::date, CAST('{"Table":...
+                                                             ^
+
+[SQL: 
+                INSERT INTO raw_api_payloads
+                (feed_name, requested_date, payload)
+                VALUES
+                (%(feed_name)s, %(requested_date)s, CAST(%(payload)s AS JSONB))
+            ]
+[parameters: {'feed_name': 'Finance_bs', 'requested_date': datetime.date(2024, 5, 10), 'payload': '{"Table": [{"Fincode": 100002, "Year_end": 201712, "Type": "S", "No_months": 12, "Unit": "10000000", "Share_Capital": 42.38, "Shares_warrants": null, ... (439843613 characters truncated) ... 43.48, "Adv_Tax": 83.15, "Due_Director": null, "Due_Subsidiaries": null, "Inter_Corporate_Deposits": null, "Corporate_Deposits": null, "flag": "A"}]}'}]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-05-11 06:24:03 - pipeline - INFO - Processing Feed: Finance_cons_bs
+2026-05-11 06:24:50 - pipeline - DEBUG - Finance_cons_bs: DataFrame columns received: ['Fincode', 'Year_end', 'Type', 'No_months', 'Unit', 'Share_Capital', 'Shares_warrants', 'Shares_application_money', 'ESOP_Outstanding', 'Share_suspense', 'Reserve', 'Sharehoders_funds', 'Deposits', 'Borrowings', 'Other_liabilities', 'Total_sounces_Funds', 'Cash_balances_RBI', 'Bank_Call_money', 'Investments', 'Advances', 'Gross_block', 'Acc_Depreciation', 'Impairment_assets', 'Lease_adj', 'CWIP', 'Other_Assets', 'Total_Applications', 'Contingent_liabilities', 'Bills_For_Collection', 'Ltrm_Borrowing', 'Secured_Loans', 'Unsecured_Loans_Nf', 'Net_Def_Tax_Nf', 'Oth_Lt_Liab', 'Lt_Trade_Payables', 'Lt_Provisions', 'Total_Nonliab', 'Trade_Payables', 'Current_Liabilities_Nf', 'St_Borrowings', 'Provisions', 'Current_Laib_Prov_Nf', 'Total_Sounces_Funds_Nf', 'Non_Current_Assets', 'Loan_Non_Cuurent_Assets', 'Net_Block', 'Cwip_Nf', 'Intang_Assetunderdev', 'Pre_Operatieve_Exps', 'Assetsintransit', 'Investments_Nf', 'Lt_Loanadv', 'Other_Noc_Assets', 'Total_Nonassets', 'Current_Investments', 'Inventory', 'Debtors', 'Cash_Bank', 'Other_Current_Nf', 'Loans_Adv', 'Currant_Assets_Nf', 'Net_Current_Assets_Nf', 'Other_Crnt_Assets', 'Misc_Exps_Not_Wo', 'Total_Applications_Nf', 'Total_Debt_Inclst_Nf', 'Book_Nav_Share', 'Adj_Bv', 'Minority_Interest', 'Equity_Authorised', 'Equity_Issued', 'EQUITY_PAIDUP', 'Equity_Forfeited', 'Adj_Equity', 'Preference_Capital', 'FACE_VALUE', 'Share_Premium', 'Capital_Reserve', 'Profit_Loss', 'General_Reserve', 'Reserve_Excl_Revaluation', 'Revaluation_Reserve', 'Demand_Deposits', 'Saving_Deposits', 'Term_Fixed_Deposits', 'Current_Deposits', 'Recurring_Deposits', 'Borrowings_RBI', 'Borrowings_Banks', 'Borrowings_GOI', 'Borrowings_FI', 'Borrowings_Bonds', 'Borrowings_Other', 'Borrowings_Outof_India', 'Bills_payable', 'Inter_oofice_adjustments_liabilities', 'Interest_accrued', 'Proposed_dividend', 'Corporate_dividend_tax', 'Cash_RBI', 'Cash_In_hand', 'Investments_India', 'GOI_Securities', 'Equity_Shares_corporate', 'Debentures_Bonds', 'Subsidiaries_Joint_ventures', 'Mutual_Funds_insurance_Units', 'Investments_Outside_India', 'GOI_Securities_Outside_india', 'Subsidiaries_Joint_ventures_outside_india', 'Other_investments_outside_India', 'Dimunition_Investments', 'Bills_purchased_discounted', 'Cash_credit_overdraft', 'Term_Loans', 'Finance_Lease_Hire_purchase', 'Buildings', 'Assets_despose', 'Other_fix_assets', 'Inter_office_adjustments_Assets', 'Interest_accrued_assets', 'Advance_tax_TDS', 'Stationery_stamps', 'Non_banking_assets', 'Deferred_tax_Assets', 'Misc_expenditures_Not_writtoff', 'Claims_Not_acknowledge_debt', 'Outstanding_Forward_Exchange_Contract', 'Guarantees_Constituents_India', 'Guarantees_Constituents_Outside_India', 'Acceptances_Endorsements_Obligations', 'Non_Convertible_Debenture', 'Conv_Debenture_Bnds', 'Packing_Credit', 'Intercorpsecdeposits', 'Term_Loan_Bank', 'Term_Loan_Inst', 'Fixed_Deposits', 'Loans_Susidiaries', 'Inter_Corp_Deposits', 'Foreign_Curr_Convertible_Notes', 'Foreign_Curr_Long_Term_Loans', 'Loans_Bank', 'Loans_Govt', 'Loans_Others', 'Def_Tax_Assets', 'Def_Tax_Liability', 'Sundry_Crs', 'Acceptances', 'Trade_Paysubs', 'Bank_Od', 'Adv_Customers', 'Interest_Not_Due', 'Share_Application', 'Cl_Curmat_Deb', 'Cl_Curmat_Others', 'Loans', 'Stbs_Sec_Loandemand', 'Stbs_Wcap', 'Stbu_Buycredit', 'Stbu_Commborr', 'Proposed_Divided', 'Prov_Corp_Tax', 'Prov_Tax', 'Prov_Retirements', 'Prefence_Dividend', 'Long_Term_Investments_Nf', 'Long_Term_Quoted', 'Long_Term_Unquoted', 'CURRENT_QUOTED', 'Raw_Material', 'Wip', 'Fin_Goods', 'Packing_Materials_Inventory', 'Store_Spares', 'Drs_Six_Months', 'Drs_Others', 'Cash_Hand', 'Bank_Balance', 'Interest_Investments', 'Interest_Debentures', 'Deposits_Govt_Other', 'Interest_Accrued_Due', 'Prepaid_Exps', 'Adv_Cash_Kind', 'Adv_Tax', 'Due_Director', 'Due_Subsidiaries', 'Inter_Corporate_Deposits', 'Corporate_Deposits', 'flag']
+2026-05-11 06:24:50 - pipeline - DEBUG - Applied renames for Finance_cons_bs: {'Outstanding_Forward_Exchange_Contract': 'outstanding_forward_exchange_contra'}
+2026-05-11 06:24:52 - pipeline - ERROR - Failed feed=Finance_cons_bs: invalid input syntax for type double precision: ""
+CONTEXT:  COPY stg_finance_cons_bs_01dc608092, line 1, column shares_warrants: ""
+
+2026-05-11 06:24:52 - pipeline - INFO - Processing Feed: Finance_pl
+2026-05-11 06:25:54 - pipeline - ERROR - Failed feed=Finance_pl: (psycopg2.errors.ProgramLimitExceeded) total size of jsonb array elements exceeds the maximum of 268435455 bytes
+LINE 5: ...          ('Finance_pl', '2024-05-10'::date, CAST('{"Table":...
+                                                             ^
+
+[SQL: 
+                INSERT INTO raw_api_payloads
+                (feed_name, requested_date, payload)
+                VALUES
+                (%(feed_name)s, %(requested_date)s, CAST(%(payload)s AS JSONB))
+            ]
+[parameters: {'feed_name': 'Finance_pl', 'requested_date': datetime.date(2024, 5, 10), 'payload': '{"Table": [{"FINCODE": 100027, "Year_end": 202103, "TYPE": "S", "No_Months": 12, "Unit": "10000000", "Interest_earned": null, "Other_income": 111.23, ... (431451354 characters truncated) ... onation": null, "Interest_Other_income": null, "Commission": null, "Power_fuel_cost": null, "royalty": null, "Project_expenses": null, "flag": "A"}]}'}]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-05-11 06:25:57 - pipeline - INFO - Processing Feed: Finance_cons_pl
+2026-05-11 06:26:44 - pipeline - DEBUG - Finance_cons_pl: DataFrame columns received: ['FINCODE', 'Year_end', 'TYPE', 'No_Months', 'Unit', 'Interest_earned', 'Other_income', 'Total_income', 'Interest', 'Operating_expenses', 'Provisions_contigency', 'Tax', 'Total', 'Profit_after_tax', 'extra_items', 'Profit_Brought_forward', 'Minority_interest', 'Share_Associate', 'Other_ConsItems', 'Consolidated_NetProfit', 'Adj_Net_profit', 'Extr_Items', 'PNLBF', 'Profit_availble_appr', 'Appropriation', 'Dividend_perc', 'Reported_EPS', 'Gross_sales', 'Net_sales', 'Inc_Dec_Inventory', 'Raw_matrs_consumed', 'Employees', 'Other_Mfg_Exps', 'Sellg_Admn_Exps', 'Misc_exps', 'Pre_Op_exps', 'Total_expendiure', 'Operating_profit', 'Depreciation', 'Profit_before_exception', 'ExceptionalIncome_Expenses', 'Profit_before_tax', 'Taxation', 'Profit_available_appropriation', 'Total_gross_sales', 'Excise', 'Power_Fuel', 'Gross_profits', 'inter_div_trf', 'Sales_return', 'Sellg_Exps', 'Cost_SW', 'Provision_investment', 'Provision_advances', 'Provision_other', 'Curr_tax', 'Def_tax', 'Fringe_benefits', 'Wealth_tax', 'Interest_advances_Bills', 'Job_works', 'Service_income', 'Opening_RM', 'Purchases_RM', 'Closing_RM', 'Purchases_FG', 'Electricity', 'Oils_fuels', 'Coals', 'Salaries', 'Providend_fund_contri', 'Staff_welfare', 'sub_contract', 'processing_charges', 'repairs_maintenance', 'UpKeep_maintenance', 'rent_rates_taxes', 'Insurance', 'priting_stationery', 'professional_charges', 'travelling', 'Advertising', 'Commission_incentives', 'freight_forwardings', 'Handling_clearing', 'Bad_debts', 'Prov_Doubtfull_debts', 'Loss_Fixed_assets', 'Loss_Foreign_exchange', 'Loss_sale_Investment', 'Interest_income', 'Dividend_income', 'Profit_FA', 'Profit_Investment', 'Prov_written_back', 'Foreign_exchange_gain', 'Interest_deb', 'Interest_Term_loans', 'Interest_fixed_deposits', 'Bank_charges', 'Appropriation_General_Reserve', 'Proposed_Equity_devided', 'Corp_Divd_tax', 'EPS', 'Adj_Eps', 'Interest_RBI', 'Interest_investment', 'Income_JV_subs', 'Rent_income', 'Interest_RBI_borrowings', 'Interest_other', 'Depreciation_leased_assets', 'Auditor_payment', 'Telephone', 'repairs_other_admin', 'Statutory_reserve', 'Appropriation_Revenue_Reserve', 'Other_appropriation', 'Sale_Shares_Units', 'Interest_earned_loan', 'Portfolio_mgt_income', 'Dividend_earned', 'Brokerage_commission', 'Processing_fees', 'Depository_charges', 'Security_trasaction_tax', 'Software_technical_charges', 'Provision_contigency', 'provision_NPA', 'Other_interest_income', 'Commision', 'Discounts', 'Other_Investmnet_income', 'Sales', 'Income_Diagnostic', 'Cash_discount', 'UpKeep_service', 'Consultant_changes', 'Packing_materials', 'freight_outward', 'Room_restaurents', 'Communication_income', 'Foods_beverage_Sales', 'Linen_Room_supplies', 'Catering_supplies', 'Laundry_washing_expenses', 'music_banquest_restaurants', 'packing_expemses', 'Sales_property_development', 'Broadcasting_revenue', 'Adverisement_revenue', 'Licence_income', 'Subscription_income', 'Contents_film_income', 'Program_production_exps', 'Telecastin_expenses', 'Programs_Films_right', 'Transmission_EPC', 'Wheeling_Transmission', 'Power_Purchased', 'Power_project_cost', 'wheeling_charges', 'Spare_consumed', 'Sub_contract_charges', 'Development_rights', 'Development_charges', 'Income_Investment_property', 'Development_rights_cost', 'Shipbuilding_income', 'Charter_income', 'freight_Income', 'Stevedoreage_cargo_expenses', 'Port_charges', 'Sale_licenses', 'Traded_sw', 'Tech_fees', 'Traing_exps', 'Software_licences', 'Travels_SW', 'Insurance_SW', 'Visa_charges', 'Contract_Support_SW', 'rates_taxes', 'Sales_scrap', 'Export_benefits', 'Subsidy_incentives', 'freight_inward', 'Hire_charges_mfg', 'Donation', 'Interest_Other_income', 'Commission', 'Power_fuel_cost', 'royalty', 'Project_expenses', 'flag']
+2026-05-11 06:26:46 - pipeline - ERROR - Failed feed=Finance_cons_pl: invalid input syntax for type double precision: ""
+CONTEXT:  COPY stg_finance_cons_pl_784ed406fe, line 1, column interest_earned: ""
+
+2026-05-11 06:26:46 - pipeline - INFO - Processing Feed: Finance_cf
+2026-05-11 06:26:53 - pipeline - DEBUG - Finance_cf: DataFrame columns received: ['FINCODE', 'Year_end', 'type', 'No_Months', 'Unit', 'Profit_bef_tax', 'Adjustment_total', 'Change_WC_total', 'Tax_paid', 'Other_Dir_exps', 'Cash_from_Operation', 'Cash_from_Investment', 'Cash_from_Financing', 'FExchDiff', 'Net_Cash_inflow_outflow', 'Opening_cash', 'Cash_amalgmation', 'Cash_subsidiaries', 'Traslation_adj_Subsidiaries', 'Effect_foreign_exchange', 'Closing_cash', 'Cashflow_after_WC', 'Flag']
+2026-05-11 06:26:54 - pipeline - ERROR - Failed feed=Finance_cf: invalid input syntax for type double precision: ""
+CONTEXT:  COPY stg_finance_cf_9bd08a0f05, line 1, column other_dir_exps: ""
+
+2026-05-11 06:26:54 - pipeline - INFO - Processing Feed: Finance_cons_cf
+2026-05-11 06:26:56 - pipeline - DEBUG - Finance_cons_cf: DataFrame columns received: ['FINCODE', 'Year_end', 'type', 'No_Months', 'Unit', 'Profit_bef_tax', 'Adjustment_total', 'Change_WC_total', 'Tax_paid', 'Other_Dir_exps', 'Cash_from_Operation', 'Cash_from_Investment', 'Cash_from_Financing', 'FExchDiff', 'Net_Cash_inflow_outflow', 'Opening_cash', 'Cash_amalgmation', 'Cash_subsidiaries', 'Traslation_adj_Subsidiaries', 'Effect_foreign_exchange', 'Closing_cash', 'Cashflow_after_WC', 'Flag']
+2026-05-11 06:26:56 - pipeline - ERROR - Failed feed=Finance_cons_cf: invalid input syntax for type double precision: ""
+CONTEXT:  COPY stg_finance_cons_cf_3438898107, line 1, column other_dir_exps: ""
+
+2026-05-11 06:26:56 - pipeline - INFO - Processing Feed: Finance_fr
+2026-05-11 06:27:48 - pipeline - ERROR - Failed feed=Finance_fr: (psycopg2.errors.ProgramLimitExceeded) total size of jsonb array elements exceeds the maximum of 268435455 bytes
+LINE 5: ...          ('Finance_fr', '2024-05-10'::date, CAST('{"Table":...
+                                                             ^
+
+[SQL: 
+                INSERT INTO raw_api_payloads
+                (feed_name, requested_date, payload)
+                VALUES
+                (%(feed_name)s, %(requested_date)s, CAST(%(payload)s AS JSONB))
+            ]
+[parameters: {'feed_name': 'Finance_fr', 'requested_date': datetime.date(2024, 5, 10), 'payload': '{"Table": [{"FINCODE": 100027, "Year_end": 202503, "TYPE": "S", "Reported_EPS": 154.9864, "Adjusted_EPS": 154.9864, "CEPS": 227.3505, "DPS": 25, "Boo ... (297571420 characters truncated) ... l, "EBIDTAM": 6.1688, "PBDTM": 6.0293, "LT_Debt_Equity_Ratio": 0, "ROIC": 0, "Total_car_b": null, "TI_CAR_b": null, "TII_CAR_b": null, "Flag": "A"}]}'}]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-05-11 06:27:50 - pipeline - INFO - Processing Feed: Finance_cons_fr
+2026-05-11 06:28:13 - pipeline - DEBUG - Finance_cons_fr: DataFrame columns received: ['FINCODE', 'Year_end', 'TYPE', 'Reported_EPS', 'Adjusted_EPS', 'CEPS', 'DPS', 'Book_NAV_Share', 'Tax_Rate', 'Core_EBITDA_Margin', 'EBIT_Margin', 'Pre_Tax_Margin', 'PAT_Margin', 'Cash_Profit_Margin', 'ROA', 'ROE', 'ROCE', 'Asset_Turnover', 'Sales_Fixed_Asset', 'Working_Capital_Sales', 'Fixed_Capital_Sales', 'Receivable_days', 'Inventory_Days', 'Payable_days', 'PER', 'PCE', 'Price_Book', 'Yield', 'EV_Net_Sales', 'EV_Core_EBITDA', 'EV_EBIT', 'EV_CE', 'MCap_Sales', 'Net_Sales_Growth', 'PBIDT_Excl_OI_Growth', 'Core_EBITDA_Growth', 'EBIT_Growth', 'PAT_Growth', 'Adj_PAT_Growth', 'Adj_EPS_Growth', 'Reported_EPS_Growth', 'Total_Debt_Equity', 'Current_Ratio', 'Quick_Ratio', 'Interest_Cover', 'Total_Debt_Mcap', 'Yield_Adv', 'Yield_Inv', 'Cost_Liab', 'NIM', 'Int_Spread', 'Cost_IncRatio', 'Core_Cost_IncRatio', 'OpCost_Asset', 'Adj_PER', 'Tier1Ratio', 'Tier2Ratio', 'CAR', 'CoreOpIncomeGrowth', 'EPSGrowth', 'BVPSGrowth', 'Adv_Growth', 'LoanDeposits', 'CashDeposits', 'InvestmentDeposits', 'IncLoanDeposits', 'GrossNPA', 'NetNPA', 'Ownersfund_total_Source', 'Fixed_Assets_TA', 'Inventory_TR', 'Dividend_PR_NP', 'Dividend_PR_CP', 'Earning_Retention_Ratio', 'Cash_Earnings_Retention', 'Price_BV', 'Return_Sales', 'Debt_TA', 'EV', 'PriceSalesRatio', 'EV_EBITA', 'CF_PerShare', 'PCF_RATIO', 'FCF_Share', 'PFCF_Ratio', 'FCF_Yield', 'SCF_Ratio', 'GPM', 'SalesToTotalAssets', 'SalesToCurrentAssets', 'Total_CAR_baseI', 'TI_CAR_baseI', 'TII_CAR_baseI', 'Total_CAR', 'TI_CAR', 'TII_CAR', 'NPA_Gross', 'NPA_Net', 'NPA_Advances', 'NetProfit_To_PBT', 'PBT_To_PBIT', 'PBIT_To_Sales', 'NetProfit_To_Sales', 'NetSales_To_TotalAssets', 'Return_On_Assets', 'Assets_To_Equity', 'Return_On_Equity', 'Interest_To_Debt', 'Debt_To_Assets', 'Interest_To_Assets', 'ROE_After_Interest', 'Dividend_Payout_Per', 'OtherIncome_To_NetWorth', 'ROA_After_Interest', 'ROE_Before_OtherInc', 'ROE_After_OtherInc', 'ROE_After_Tax_Rate', 'Credit_Deposit', 'InterestExpended_InterestEarned', 'InterestIncome_TotalFunds', 'InterestExpended_TotalFunds', 'NetInterestIncome_TotalFunds', 'CASA', 'Inventory_Turnover', 'Debtors_Turnover', 'Adj_PE', 'Adjusted_bv', 'Adj_DPS', 'Networth_Growth', 'CE_Growth', 'GB_Growth', 'PBDT_Growth', 'PBIT_Growth', 'PBT_Growth', 'CP_Growth', 'Exports_Growth', 'Imports_Growth', 'MCap_Growth', 'EBIDTAM', 'PBDTM', 'LT_Debt_Equity_Ratio', 'ROIC', 'Total_car_b', 'TI_CAR_b', 'TII_CAR_b', 'Flag']
+2026-05-11 06:28:14 - pipeline - ERROR - Failed feed=Finance_cons_fr: invalid input syntax for type double precision: ""
+CONTEXT:  COPY stg_finance_cons_fr_f455e6584b, line 1, column yield_adv: ""
+
+2026-05-11 06:28:14 - pipeline - INFO - Processing Feed: Resultsf_IND_Ex1
+2026-05-11 06:28:54 - pipeline - ERROR - Failed feed=Resultsf_IND_Ex1: Request failed after 3 attempts: HTTPConnectionPool(host='mock_api', port=8080): Max retries exceeded with url: /RawData/GetRawDataJSON?filename=Resultsf_IND_Ex1&date=10052024&section=Fundamental&sub=&token=Gp4r5wfgNYi72c0EdpWSf21oLLVjlwzr (Caused by NameResolutionError("HTTPConnection(host='mock_api', port=8080): Failed to resolve 'mock_api' ([Errno -2] Name or service not known)"))
+
+--- STDERR ---
+ Container pipeline_mock_api Running 
+ Container pipeline_db_test Running 
+ Container pipeline_db_test Waiting 
+ Container pipeline_db_test Healthy 
+ Container pipeline_init_db Starting 
+ Container pipeline_init_db Started 
+ Container pipeline_init_db Waiting 
+ Container pipeline_init_db Exited 
+ Container tests-api_manual_test-run-e6c92d1f81de Creating 
+ Container tests-api_manual_test-run-e6c92d1f81de Created 
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/urllib3/connection.py", line 204, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/socket.py", line 978, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno -2] Name or service not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/urllib3/connectionpool.py", line 493, in _make_request
+    conn.request(
+  File "/usr/local/lib/python3.12/site-packages/urllib3/connection.py", line 500, in request
+    self.endheaders()
+  File "/usr/local/lib/python3.12/http/client.py", line 1353, in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+  File "/usr/local/lib/python3.12/http/client.py", line 1113, in _send_output
+    self.send(msg)
+  File "/usr/local/lib/python3.12/http/client.py", line 1057, in send
+    self.connect()
+  File "/usr/local/lib/python3.12/site-packages/urllib3/connection.py", line 331, in connect
+    self.sock = self._new_conn()
+                ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/urllib3/connection.py", line 211, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: HTTPConnection(host='mock_api', port=8080): Failed to resolve 'mock_api' ([Errno -2] Name or service not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/requests/adapters.py", line 645, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/urllib3/connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/urllib3/util/retry.py", line 535, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPConnectionPool(host='mock_api', port=8080): Max retries exceeded with url: /RawData/GetRawDataJSON?filename=Resultsf_IND_Ex1&date=10052024&section=Fundamental&sub=&token=Gp4r5wfgNYi72c0EdpWSf21oLLVjlwzr (Caused by NameResolutionError("HTTPConnection(host='mock_api', port=8080): Failed to resolve 'mock_api' ([Errno -2] Name or service not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/app/accord_client.py", line 18, in fetch_accord_feed
+    response = requests.get(
+               ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/requests/api.py", line 73, in get
+    return request("get", url, params=params, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/requests/api.py", line 59, in request
+    return session.request(method=method, url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/requests/sessions.py", line 592, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/requests/sessions.py", line 706, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/requests/adapters.py", line 678, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPConnectionPool(host='mock_api', port=8080): Max retries exceeded with url: /RawData/GetRawDataJSON?filename=Resultsf_IND_Ex1&date=10052024&section=Fundamental&sub=&token=Gp4r5wfgNYi72c0EdpWSf21oLLVjlwzr (Caused by NameResolutionError("HTTPConnection(host='mock_api', port=8080): Failed to resolve 'mock_api' ([Errno -2] Name or service not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/app/api_main.py", line 107, in process_single_feed
+    http_status, payload = fetch_feed(feed_name, date_ddmmyyyy)
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/api_main.py", line 230, in fetch_feed
+    return fetch_accord_feed(feed_name, date_ddmmyyyy, ACCORD_API_TOKEN)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/accord_client.py", line 52, in fetch_accord_feed
+    raise RuntimeError(f"Request failed after {max_attempts} attempts: {e}")
+RuntimeError: Request failed after 3 attempts: HTTPConnectionPool(host='mock_api', port=8080): Max retries exceeded with url: /RawData/GetRawDataJSON?filename=Resultsf_IND_Ex1&date=10052024&section=Fundamental&sub=&token=Gp4r5wfgNYi72c0EdpWSf21oLLVjlwzr (Caused by NameResolutionError("HTTPConnection(host='mock_api', port=8080): Failed to resolve 'mock_api' ([Errno -2] Name or service not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 1319, in _checkout
+    raise exc.InvalidatePoolError()
+sqlalchemy.exc.InvalidatePoolError: ()
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 143, in __init__
+    self._dbapi_connection = engine.raw_connection()
+                             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 3317, in raw_connection
+    return self.pool.connect()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 1353, in _checkout
+    with util.safe_reraise():
+         ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 1350, in _checkout
+    fairy._connection_record.get_connection()
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 837, in get_connection
+    self.__connect()
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+         ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.OperationalError: could not translate host name "db_test" to address: Name or service not known
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/app/app/api_main.py", line 259, in <module>
+    run_incremental()
+  File "/app/app/api_main.py", line 234, in run_incremental
+    run_incremental_for_feeds(LOAD_ORDER)
+  File "/app/app/api_main.py", line 66, in run_incremental_for_feeds
+    success = process_single_feed(
+              ^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/api_main.py", line 220, in process_single_feed
+    finish_ingestion_run(
+  File "/app/app/ingestion_log.py", line 163, in finish_ingestion_run
+    log_run(
+  File "/app/app/ingestion_log.py", line 58, in log_run
+    with engine.begin() as conn:
+         ^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/contextlib.py", line 137, in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 3257, in begin
+    with self.connect() as conn:
+         ^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 3293, in connect
+    return self._connection_cls(self)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 145, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2448, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 143, in __init__
+    self._dbapi_connection = engine.raw_connection()
+                             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 3317, in raw_connection
+    return self.pool.connect()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 1353, in _checkout
+    with util.safe_reraise():
+         ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 1350, in _checkout
+    fairy._connection_record.get_connection()
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 837, in get_connection
+    self.__connect()
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+         ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) could not translate host name "db_test" to address: Name or service not known
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+
+------------------------------------------------------------
+   FAIL: ManualAPI failed (Code: 1)
+
+============================================================
+STEP: Backfill | Testing 7-day chronological recovery
+CMD: docker-compose -f tests/docker-compose.test.yml run --rm backfill_test
+============================================================

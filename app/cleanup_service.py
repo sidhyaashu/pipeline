@@ -3,6 +3,8 @@ from sqlalchemy.engine import Engine
 
 from app.alert_service import send_alert
 from app.config import RAW_PAYLOAD_RETENTION_DAYS, ENABLE_RAW_PAYLOAD_CLEANUP
+from app.logger import logger
+
 
 
 def cleanup_old_raw_payloads(engine: Engine) -> int:
@@ -12,7 +14,7 @@ def cleanup_old_raw_payloads(engine: Engine) -> int:
     Safe to run if the table is empty.
     """
     if not ENABLE_RAW_PAYLOAD_CLEANUP:
-        print("⏭️ Raw payload cleanup is disabled (ENABLE_RAW_PAYLOAD_CLEANUP=false)")
+        logger.info("Raw payload cleanup is disabled (ENABLE_RAW_PAYLOAD_CLEANUP=false)")
         return 0
 
     try:
@@ -27,14 +29,14 @@ def cleanup_old_raw_payloads(engine: Engine) -> int:
             deleted = result.rowcount
 
         if deleted > 0:
-            print(f"🧹 Cleanup: deleted {deleted} raw payload rows older than {RAW_PAYLOAD_RETENTION_DAYS} days.")
+            logger.info(f"Cleanup: deleted {deleted} raw payload rows older than {RAW_PAYLOAD_RETENTION_DAYS} days.")
         else:
-            print(f"🧹 Cleanup: no raw payload rows to delete (retention window: {RAW_PAYLOAD_RETENTION_DAYS} days).")
+            logger.info(f"Cleanup: no raw payload rows to delete (retention window: {RAW_PAYLOAD_RETENTION_DAYS} days).")
 
         return deleted
 
     except Exception as e:
         msg = f"Raw payload cleanup failed: {str(e)}"
-        print(f"❌ {msg}")
+        logger.error(msg)
         send_alert("Cleanup Failure", msg)
         return 0

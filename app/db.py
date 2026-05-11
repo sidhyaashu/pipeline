@@ -3,6 +3,8 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
 from app.config import DATABASE_URL
+from app.logger import logger
+
 
 
 def build_engine() -> Engine:
@@ -23,10 +25,10 @@ def wait_for_db(engine: Engine, retries: int = 20, delay: int = 3) -> None:
         try:
             with engine.connect() as conn:
                 conn.execute(text("SELECT 1"))
-            print("✅ Database connection successful")
+            logger.info("Database connection successful")
             return
         except Exception as e:
-            print(f"⏳ Waiting for DB... {attempt}/{retries} | {e}")
+            logger.warning(f"Waiting for DB... {attempt}/{retries} | {e}")
             time.sleep(delay)
 
     raise RuntimeError("Database connection failed")

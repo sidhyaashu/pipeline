@@ -5,6 +5,8 @@ from sqlalchemy import text
 
 from app.db import build_engine, wait_for_db
 from app.config import TIMEZONE
+from app.logger import logger
+
 
 
 def check_db_health(engine) -> dict:
@@ -115,7 +117,7 @@ def full_health_report() -> dict:
         "raw_payload_storage": raw_storage,
     }
 
-    print(json.dumps(report, indent=2, default=str))
+    logger.info("Health Report: " + json.dumps(report, indent=2, default=str))
     return report
 
 

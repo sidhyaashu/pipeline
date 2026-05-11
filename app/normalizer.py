@@ -1,8 +1,10 @@
 import pandas as pd
 import re
-from sqlalchemy.sql.sqltypes import BigInteger, Integer, SmallInteger, Numeric
+from sqlalchemy.sql.sqltypes import BigInteger, Integer, SmallInteger, Numeric, Float, DateTime, TIMESTAMP
 
 from app.config import COLUMN_RENAMES
+from app.logger import logger
+
 
 
 def normalize_column_name(name: str) -> str:
@@ -44,7 +46,7 @@ def apply_renames(df: pd.DataFrame, feed_name: str) -> pd.DataFrame:
             actual_renames[actual_source] = target_col
 
     if actual_renames:
-        print(f"🔄 Applied renames for {feed_name}: {actual_renames}")
+        logger.debug(f"Applied renames for {feed_name}: {actual_renames}")
         df = df.rename(columns=actual_renames)
 
     return df
@@ -58,6 +60,10 @@ def preprocess_dataframe_for_table(
     df = df.copy()
     df.columns = [normalize_column_name(c) for c in df.columns]
     df = df.loc[:, ~pd.Index(df.columns).duplicated()]
+
+    # Convert all empty strings or whitespace-only strings to None
+    # This is critical for Postgres COPY to treat them as NULL
+    df = df.replace(r'^\s*$', None, regex=True)
 
     db_columns = {c["name"].lower(): c["type"] for c in db_columns_info}
     db_cols = list(db_columns.keys())
@@ -74,8 +80,10 @@ def preprocess_dataframe_for_table(
 
         if isinstance(col_type, (Integer, BigInteger, SmallInteger)):
             df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
-        elif isinstance(col_type, Numeric):
+        elif isinstance(col_type, (Numeric, Float)):
             df[col] = pd.to_numeric(df[col], errors="coerce")
+        elif isinstance(col_type, (DateTime, TIMESTAMP)):
+             df[col] = pd.to_datetime(df[col], errors="coerce")
 
     if "flag" not in df.columns:
         df["flag"] = "O"

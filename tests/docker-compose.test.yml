@@ -1,0 +1,137 @@
+services:
+  db_test:
+    image: postgres:16
+    container_name: pipeline_db_test
+    environment:
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+      POSTGRES_DB: test_db
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user -d test_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Dedicated initialization service
+  init_db:
+    build: ..
+    container_name: pipeline_init_db
+    depends_on:
+      db_test:
+        condition: service_healthy
+    env_file:
+      - .env.test
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://test_user:test_password@db_test:5432/test_db
+      - SCHEMA_DIR=/app/schemas
+    volumes:
+      - ..:/app
+      - ../schemas:/app/schemas
+    command: python tests/init_test_db.py
+
+  mock_api:
+    build: ..
+    container_name: pipeline_mock_api
+    ports:
+      - "8080:8080"
+    volumes:
+      - ..:/app
+      - ./data:/app/data
+    command: python tests/mock_api_server.py
+
+  # 1. Sequential Simulation
+  simulation_runner:
+    build: ..
+    container_name: pipeline_simulation_runner
+    depends_on:
+      init_db:
+        condition: service_completed_successfully
+      mock_api:
+        condition: service_started
+    env_file:
+      - .env.test
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://test_user:test_password@db_test:5432/test_db
+      - ACCORD_BASE_URL=http://mock_api:8080/RawData/GetRawDataJSON
+      - DATA_DIR=/app/data
+    volumes:
+      - ..:/app
+      - ./data:/app/data
+    command: python tests/full_simulation_service.py
+
+  # 1b. Penetration Simulation (Uses bad data)
+  penetration_test:
+    build: ..
+    container_name: pipeline_penetration_test
+    depends_on:
+      init_db:
+        condition: service_completed_successfully
+      mock_api:
+        condition: service_started
+    env_file:
+      - .env.test
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://test_user:test_password@db_test:5432/test_db
+      - ACCORD_BASE_URL=http://mock_api:8080/RawData/GetRawDataJSON
+      - DATA_DIR=/app/data/penetration
+    volumes:
+      - ..:/app
+      - ./data/penetration:/app/data/penetration
+    command: python tests/full_simulation_service.py
+
+  # 2. Scheduler Test
+  scheduler_test:
+    build: ..
+    container_name: pipeline_scheduler_test
+    depends_on:
+      init_db:
+        condition: service_completed_successfully
+      mock_api:
+        condition: service_started
+    env_file:
+      - .env.test
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://test_user:test_password@db_test:5432/test_db
+      - ACCORD_BASE_URL=http://mock_api:8080/RawData/GetRawDataJSON
+      - COMPANY_MASTER_MINUTE=0
+    volumes:
+      - ..:/app
+    command: python -m app.scheduler
+
+  # 3. Manual API Test
+  api_manual_test:
+    build: ..
+    container_name: pipeline_manual_test
+    depends_on:
+      init_db:
+        condition: service_completed_successfully
+      mock_api:
+        condition: service_started
+    env_file:
+      - .env.test
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://test_user:test_password@db_test:5432/test_db
+      - ACCORD_BASE_URL=http://mock_api:8080/RawData/GetRawDataJSON
+    volumes:
+      - ..:/app
+    command: python -m app.api_main --feeds Company_master
+
+  # 4. Backfill Test
+  backfill_test:
+    build: ..
+    container_name: pipeline_backfill_test
+    depends_on:
+      init_db:
+        condition: service_completed_successfully
+      mock_api:
+        condition: service_started
+    env_file:
+      - .env.test
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://test_user:test_password@db_test:5432/test_db
+      - ACCORD_BASE_URL=http://mock_api:8080/RawData/GetRawDataJSON
+    volumes:
+      - ..:/app
+    command: python -c "from app.api_main import run_backfill_last_7_days; run_backfill_last_7_days()"

@@ -4,6 +4,8 @@ from app.db import build_engine
 from app.retry_service import retry_rejected_rows
 from app.cleanup_service import cleanup_old_raw_payloads
 from datetime import datetime
+from app.logger import logger
+
 
 
 COMPANY_MASTER_FEEDS = [
@@ -57,17 +59,17 @@ from app.config import (
 
 def run_daily_cleanup():
     engine = build_engine()
-    print("\n🧹 Running raw payload cleanup...")
+    logger.info("Running raw payload cleanup...")
     deleted = cleanup_old_raw_payloads(engine)
-    print(f"🧹 Cleanup done: {deleted} rows purged.")
+    logger.info(f"Cleanup done: {deleted} rows purged.")
 
 
 def run_feeds_with_retry(feeds: list[str], context: str = 'scheduler', window: str = 'daily'):
     run_incremental_for_feeds(feeds, execution_context=context, execution_window=window)
     engine = build_engine()
-    print("\n🔄 Running retry service for rejected rows...")
+    logger.info("Running retry service for rejected rows...")
     summary = retry_rejected_rows(engine)
-    print(f"🔄 Retry summary: {summary}\n")
+    logger.info(f"Retry summary: {summary}")
 
 def main():
     scheduler = BlockingScheduler(timezone=TIMEZONE)
@@ -156,7 +158,7 @@ def main():
         replace_existing=True,
     )
 
-    print("✅ Accord API scheduler started")
+    logger.info("Accord API scheduler started")
     scheduler.start()
 
 

@@ -5,7 +5,9 @@ from app.config import (
     API_RETRY_BACKOFF_3, API_TIMEOUT_SECONDS
 )
 
-BASE_URL = "https://contentapi.accordwebservices.com/RawData/GetRawDataJSON"
+import os
+
+BASE_URL = os.getenv("ACCORD_BASE_URL", "https://contentapi.accordwebservices.com/RawData/GetRawDataJSON")
 
 def fetch_accord_feed(filename: str, date_ddmmyyyy: str, token: str) -> tuple[int, dict | None]:
     max_attempts = API_MAX_RETRIES

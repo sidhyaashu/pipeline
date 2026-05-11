@@ -1,11 +1,8 @@
-import csv
 import io
 import uuid
 
 import pandas as pd
 from sqlalchemy import text
-
-from app.normalizer import safe_value
 
 
 def dataframe_to_csv_buffer(df: pd.DataFrame, columns: list[str]) -> io.StringIO:
@@ -17,10 +14,9 @@ def dataframe_to_csv_buffer(df: pd.DataFrame, columns: list[str]) -> io.StringIO
         )
 
     buffer = io.StringIO()
-    writer = csv.writer(buffer, quoting=csv.QUOTE_MINIMAL, lineterminator="\n")
-
-    for row in selected_df.itertuples(index=False, name=None):
-        writer.writerow([safe_value(v) for v in row])
+    # Use Pandas' native to_csv for performance (C-implemented)
+    # quoting=1 corresponds to csv.QUOTE_MINIMAL
+    selected_df.to_csv(buffer, index=False, header=False, na_rep='', quoting=1)
 
     buffer.seek(0)
     return buffer
@@ -30,7 +26,7 @@ def create_temp_staging_table(conn, target_table: str) -> str:
     staging_table = f"stg_{target_table.lower()}_{uuid.uuid4().hex[:10]}"
 
     conn.execute(
-        text(f'CREATE TEMP TABLE "{staging_table}" (LIKE "{target_table}" INCLUDING DEFAULTS)')
+        text(f'CREATE TEMP TABLE "{staging_table}" (LIKE "{target_table}" INCLUDING DEFAULTS) ON COMMIT DROP')
     )
 
     return staging_table

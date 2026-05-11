@@ -1,5 +1,7 @@
 import gc
 from datetime import datetime
+from app.logger import logger
+
 import time
 
 from sqlalchemy import inspect
@@ -35,8 +37,8 @@ def run_incremental_for_feeds(
     date_ddmmyyyy = override_date or API_DATE.strip() or datetime.now().strftime("%d%m%Y")
     requested_date = datetime.strptime(date_ddmmyyyy, "%d%m%Y").date()
 
-    print(f"\n🚀 Starting ingestion for date={date_ddmmyyyy} [context={execution_context}, window={execution_window}]")
-    print(f"Feeds: {feeds}")
+    logger.info(f"Starting ingestion for date={date_ddmmyyyy} [context={execution_context}, window={execution_window}]")
+    logger.info(f"Feeds: {feeds}")
 
     feed_failures: dict[str, int] = {}
 
@@ -47,14 +49,14 @@ def run_incremental_for_feeds(
                 engine, feed_name, requested_date, execution_context, execution_window
             )
             if not allowed:
-                print(f"\n⏭️ Skipping {feed_name} for {date_ddmmyyyy} (already successful in this context)")
+                logger.info(f"Skipping {feed_name} for {date_ddmmyyyy} (already successful in this context)")
                 continue
         else:
             # Force or idempotency disabled: still register as STARTED to track attempt
             start_ingestion_run(engine, feed_name, requested_date, execution_context, execution_window)
 
         if feed_failures.get(feed_name, 0) >= MAX_FEED_CONSECUTIVE_FAILURES:
-            print(f"\n🛑 Skipping {feed_name}: {MAX_FEED_CONSECUTIVE_FAILURES} consecutive failures reached.")
+            logger.warning(f"Skipping {feed_name}: {MAX_FEED_CONSECUTIVE_FAILURES} consecutive failures reached.")
             finish_ingestion_run(
                 engine, feed_name, requested_date, execution_context, execution_window,
                 status="SKIPPED_CIRCUIT_BREAKER", error_message="Consecutive failures reached"
@@ -84,13 +86,13 @@ def process_single_feed(
     execution_context: str,
     execution_window: str
 ) -> bool:
-    print(f"\n🌐 Feed: {feed_name}")
+    logger.info(f"Processing Feed: {feed_name}")
 
     table_name = resolve_table_name(engine, feed_name)
 
     if not table_name:
         msg = f"No DB table found for feed={feed_name}"
-        print(f"❌ {msg}")
+        logger.error(msg)
         finish_ingestion_run(
             engine, feed_name, requested_date, execution_context, execution_window,
             status="TABLE_NOT_FOUND", error_message=msg
@@ -98,11 +100,14 @@ def process_single_feed(
         return False
 
     start_time = time.time()
+    df = None
+    upserted, deleted, rejected = 0, 0, 0
+    
     try:
         http_status, payload = fetch_feed(feed_name, date_ddmmyyyy)
 
         if http_status == 204:
-            print("⏭️ No incremental data")
+            logger.info(f"{feed_name}: No incremental data")
             duration = int(time.time() - start_time)
             finish_ingestion_run(
                 engine, feed_name, requested_date, execution_context, execution_window,
@@ -112,7 +117,7 @@ def process_single_feed(
 
         if http_status in (403, 404):
             msg = f"API returned HTTP {http_status}"
-            print(f"❌ {msg}")
+            logger.error(msg)
             send_alert(f"API Error {http_status}", f"{feed_name} returned {http_status}")
             duration = int(time.time() - start_time)
             finish_ingestion_run(
@@ -128,7 +133,7 @@ def process_single_feed(
         last_success_hash = get_last_successful_hash(engine, feed_name)
         
         if current_hash == last_success_hash:
-            print("⏭️ Skipping merge: Payload identical to last successful run.")
+            logger.info(f"{feed_name}: Skipping merge: Payload identical to last successful run.")
             duration = int(time.time() - start_time)
             finish_ingestion_run(
                 engine, feed_name, requested_date, execution_context, execution_window,
@@ -153,17 +158,19 @@ def process_single_feed(
             )
             return True
 
+        logger.debug(f"{feed_name}: DataFrame columns received: {list(df.columns)}")
         df = apply_renames(df, feed_name)
+        rows_count = len(df)
 
         pk_cols = PRIMARY_KEYS.get(table_name, [])
         val_result = validate_payload_df(df, table_name, pk_cols)
 
         for w in val_result["warnings"]:
-            print(f"⚠️ Validation Warning: {w}")
+            logger.warning(f"Validation Warning: {w}")
 
         if not val_result["valid"]:
             error_str = "; ".join(val_result["errors"])
-            print(f"❌ Validation Errors: {error_str}")
+            logger.error(f"Validation Errors: {error_str}")
             send_alert("Validation Failed", f"{feed_name}: {error_str}")
             duration = int(time.time() - start_time)
             finish_ingestion_run(
@@ -181,9 +188,6 @@ def process_single_feed(
             requested_date=requested_date,
         )
 
-        del df
-        gc.collect()
-
         duration = int(time.time() - start_time)
         finish_ingestion_run(
             engine=engine,
@@ -193,7 +197,7 @@ def process_single_feed(
             execution_window=execution_window,
             status="SUCCESS",
             http_status=http_status,
-            rows_received=len(df),
+            rows_received=rows_count,
             rows_upserted=upserted,
             rows_deleted=deleted,
             rows_rejected=rejected,
@@ -201,15 +205,17 @@ def process_single_feed(
             payload_hash=current_hash
         )
 
-        print(f"✅ Success: received={len(df)}, upserted={upserted}, deleted={deleted}, rejected={rejected}")
+        logger.info(f"Success {feed_name}: received={rows_count}, upserted={upserted}, deleted={deleted}, rejected={rejected}")
         if rejected > 0:
             send_alert("Rows Rejected", f"{feed_name} had {rejected} rows rejected")
 
+        del df
+        gc.collect()
         return True
 
     except Exception as e:
         duration = int(time.time() - start_time)
-        print(f"❌ Failed feed={feed_name}: {e}")
+        logger.error(f"Failed feed={feed_name}: {e}")
         send_alert("Feed Failure", f"{feed_name} failed: {str(e)}")
         finish_ingestion_run(
             engine, feed_name, requested_date, execution_context, execution_window,
@@ -235,7 +241,7 @@ def run_backfill_last_7_days() -> None:
     for i in range(6, -1, -1):
         backfill_date = today - datetime.timedelta(days=i)
         date_ddmmyyyy = backfill_date.strftime("%d%m%Y")
-        print(f"\n⏳ Running backfill for {date_ddmmyyyy}")
+        logger.info(f"Running backfill for {date_ddmmyyyy}")
         try:
             run_incremental_for_feeds(
                 LOAD_ORDER, 

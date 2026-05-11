@@ -14,6 +14,7 @@ API_DATE = os.getenv("API_DATE", "")
 
 ETL_BATCH_SIZE = int(os.getenv("ETL_BATCH_SIZE", "50000"))
 SQL_DIR = os.getenv("SQL_DIR", "/app/sql")
+SCHEMA_DIR = os.getenv("SCHEMA_DIR", "/app/schemas")
 
 # API INGESTION HARDENING
 ENABLE_IDEMPOTENCY = os.getenv("ENABLE_IDEMPOTENCY", "true").lower() == "true"

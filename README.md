@@ -145,20 +145,38 @@ finglobal_api_ingestion_service/
 ├── docker-compose.yml          # Container orchestration topology
 ├── app/
 │   ├── accord_client.py        # HTTP networking & backoff mechanics
-│   ├── alert_service.py        # External notification gateway
-│   ├── api_main.py             # Feed iteration & core lifecycle loop
-│   ├── config.py               # Environment variable parsing engine
-│   ├── db.py                   # SQLAlchemy connection pools
-│   ├── ingestion_log.py        # Metrics recording & summarization
-│   ├── merge_service.py        # FK checks & UPSERT generation
-│   ├── normalizer.py           # Column name standardization
-│   ├── retry_service.py        # Rejected row ambulance routing
-│   ├── scheduler.py            # APScheduler cron framework
-│   ├── staging_loader.py       # Ephemeral table management
-│   └── validation_service.py   # Payload verification & flag security
+...
 ├── sql/
 │   └── ingestion_tables.sql    # DDL for tracking & metric tables
+├── schemas/                    # SQL definitions for all 26+ financial tables
+└── tests/                      # Full testing & simulation environment
+    ├── data/                   # Mock API response payloads (.txt)
+    ├── docker-compose.test.yml # Isolated test environment orchestration
+    ├── mock_api_server.py      # Local HTTP server simulating Accord API
+    ├── full_simulation_service.py # End-to-end integration simulation
+    └── test_pipeline.py        # Python-driven verification script
 ```
+
+## 🧪 Testing & Simulation
+
+We provide a robust testing environment that allows you to simulate the entire pipeline without calling the real API.
+
+### 1. Run Full Integration Simulation
+This will build a fresh test database, start a mock API server loaded with your local `.txt` data, and run all 26 feeds in the correct dependency order.
+
+```bash
+docker-compose -f tests/docker-compose.test.yml up --build
+```
+
+### 2. Run Python-driven Pipeline Test
+A script that orchestrates the above steps and provides a final verification report on row counts and status:
+
+```bash
+python tests/test_pipeline.py
+```
+
+---
+
 
 
 ```bash
