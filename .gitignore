@@ -1,0 +1,5 @@
+data
+finglobal-api-data-ingestion_key.pem
+__pycache__/
+venv
+etl.py

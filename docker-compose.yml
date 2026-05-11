@@ -1,0 +1,51 @@
+services:
+  scheduler:
+    build: .
+    container_name: api_scheduler
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - .:/app
+    command: ["python", "-m", "app.scheduler"]
+
+  api_manual:
+    build: .
+    container_name: api_manual_run
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - .:/app
+    command: ["python", "-m", "app.api_main"]
+
+  backfill:
+    build: .
+    container_name: api_backfill
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - .:/app
+    command: ["python", "-c", "from app.api_main import run_backfill_last_7_days; run_backfill_last_7_days()"]
+
+  healthcheck_manual:
+    build: .
+    container_name: api_healthcheck
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    command: ["python", "-m", "app.healthcheck"]
+
+  migrator:
+    build: .
+    container_name: api_migrator
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    command: ["python", "-m", "app.migrate_db"]

@@ -1,0 +1,230 @@
+import hashlib
+import json
+import pandas as pd
+from datetime import date
+from sqlalchemy import inspect, text
+from sqlalchemy.engine import Engine
+
+from app.config import ETL_BATCH_SIZE, PRIMARY_KEYS
+from app.normalizer import preprocess_dataframe_for_table
+from app.staging_loader import create_temp_staging_table, copy_dataframe_to_staging
+
+
+def chunk_dataframe(df: pd.DataFrame, batch_size: int):
+    for start in range(0, len(df), batch_size):
+        yield df.iloc[start:start + batch_size].copy()
+
+
+def build_delete_sql(target_table: str, staging_table: str, pk_cols: list[str]) -> str:
+    join_condition = " AND ".join([f't."{pk}" = s."{pk}"' for pk in pk_cols])
+    pk_not_null = " AND ".join([f's."{pk}" IS NOT NULL' for pk in pk_cols])
+
+    return f"""
+        DELETE FROM "{target_table}" t
+        USING "{staging_table}" s
+        WHERE s.flag = 'D'
+          AND {pk_not_null}
+          AND {join_condition}
+    """
+
+
+def build_upsert_sql(
+    target_table: str,
+    staging_table: str,
+    insert_cols: list[str],
+    pk_cols: list[str],
+) -> str:
+    col_list = ", ".join(f'"{c}"' for c in insert_cols)
+    pk_list = ", ".join(f'"{c}"' for c in pk_cols)
+    select_cols = ", ".join(f's."{c}"' for c in insert_cols)
+
+    non_pk_cols = [c for c in insert_cols if c not in pk_cols]
+
+    if non_pk_cols:
+        update_parts = [f'"{c}" = EXCLUDED."{c}"' for c in non_pk_cols]
+        diff_condition = " OR ".join(
+            [f't."{c}" IS DISTINCT FROM EXCLUDED."{c}"' for c in non_pk_cols]
+        )
+        update_clause = f"DO UPDATE SET {', '.join(update_parts)} WHERE {diff_condition}"
+    else:
+        update_clause = "DO NOTHING"
+
+    return f"""
+        INSERT INTO "{target_table}" AS t ({col_list})
+        SELECT {col_list} FROM (
+            SELECT DISTINCT ON ({pk_list}) * FROM "{staging_table}" 
+            WHERE flag IN ('A', 'O') 
+            ORDER BY {pk_list}, flag DESC
+        ) s
+        ON CONFLICT ({pk_list}) {update_clause}
+    """
+
+
+def generate_payload_hash(payload: dict) -> str:
+    return hashlib.sha256(
+        json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
+    ).hexdigest()
+
+
+def process_dataframe(
+    engine: Engine,
+    table_name: str,
+    df: pd.DataFrame,
+    feed_name: str,
+    requested_date: date,
+) -> tuple[int, int, int]:
+    table_name = table_name.lower()
+
+    if table_name not in PRIMARY_KEYS:
+        raise ValueError(f"No primary key configured for table={table_name}")
+
+    inspector = inspect(engine)
+    db_columns_info = inspector.get_columns(table_name)
+
+    if not db_columns_info:
+        raise ValueError(f"Table not found or no columns found: {table_name}")
+
+    df, db_cols = preprocess_dataframe_for_table(df, table_name, db_columns_info)
+
+    pk_cols = PRIMARY_KEYS[table_name]
+
+    missing_pk = [pk for pk in pk_cols if pk not in df.columns]
+    if missing_pk:
+        raise ValueError(f"Missing PK columns for {table_name}: {missing_pk}")
+
+    insert_cols = [c for c in db_cols if c in df.columns]
+    copy_columns = insert_cols
+
+    total_upserted = 0
+    total_deleted = 0
+    total_rejected = 0
+
+    # All child feeds depending on company_master
+    has_fincode_fk = "fincode" in df.columns and table_name != "company_master"
+
+    for chunk in chunk_dataframe(df, ETL_BATCH_SIZE):
+        with engine.begin() as conn:
+            staging_table = create_temp_staging_table(conn, table_name)
+
+            copy_dataframe_to_staging(
+                conn=conn,
+                df=chunk,
+                staging_table=staging_table,
+                copy_columns=copy_columns,
+            )
+
+            # ======================================================
+            # FK VALIDATION + SAFE REJECTED ROW PARKING
+            # ======================================================
+            if has_fincode_fk:
+                rejected_count = int(
+                    conn.execute(
+                        text(
+                            f'''SELECT COUNT(*)
+                                FROM "{staging_table}" s
+                                WHERE NOT EXISTS (
+                                    SELECT 1
+                                    FROM company_master cm
+                                    WHERE cm.fincode = s.fincode
+                                )'''
+                        )
+                    ).scalar()
+                    or 0
+                )
+
+                if rejected_count > 0:
+                    invalid_rows = conn.execute(
+                        text(
+                            f'''
+                            SELECT row_to_json(s.*)::jsonb AS row_payload
+                            FROM "{staging_table}" s
+                            WHERE NOT EXISTS (
+                                SELECT 1
+                                FROM company_master cm
+                                WHERE cm.fincode = s.fincode
+                            )
+                            '''
+                        )
+                    ).fetchall()
+
+                    for invalid_row in invalid_rows:
+                        row_payload = invalid_row.row_payload
+                        payload_hash = generate_payload_hash(row_payload)
+
+                        conn.execute(
+                            text(
+                                """
+                                INSERT INTO rejected_ingestion_rows
+                                    (feed_name, requested_date, reason, row_payload, payload_hash)
+                                VALUES
+                                    (:feed_name, :requested_date, :reason, CAST(:row_payload AS JSONB), :payload_hash)
+                                ON CONFLICT (feed_name, requested_date, payload_hash) DO NOTHING
+                                """
+                            ),
+                            {
+                                "feed_name": feed_name,
+                                "requested_date": requested_date,
+                                "reason": "Missing fincode in company_master",
+                                "row_payload": json.dumps(row_payload, default=str),
+                                "payload_hash": payload_hash,
+                            },
+                        )
+
+                    # Remove invalid rows so valid rows continue processing
+                    conn.execute(
+                        text(
+                            f'''
+                            DELETE FROM "{staging_table}" s
+                            WHERE NOT EXISTS (
+                                SELECT 1
+                                FROM company_master cm
+                                WHERE cm.fincode = s.fincode
+                            )
+                            '''
+                        )
+                    )
+
+                    total_rejected += rejected_count
+
+            # ======================================================
+            # UPSERT / DELETE COUNTS
+            # ======================================================
+            upsert_count = int(
+                conn.execute(
+                    text(f'''SELECT COUNT(*) FROM "{staging_table}" WHERE flag IN ('A', 'O')''')
+                ).scalar()
+                or 0
+            )
+
+            delete_count = int(
+                conn.execute(
+                    text(f"SELECT COUNT(*) FROM \"{staging_table}\" WHERE flag = 'D'")
+                ).scalar()
+                or 0
+            )
+
+            # ======================================================
+            # DELETE FLOW
+            # ======================================================
+            if delete_count:
+                conn.execute(text(build_delete_sql(table_name, staging_table, pk_cols)))
+
+            # ======================================================
+            # UPSERT FLOW
+            # ======================================================
+            if upsert_count:
+                result = conn.execute(
+                    text(build_upsert_sql(table_name, staging_table, insert_cols, pk_cols))
+                )
+                # In PostgreSQL, rowcount reflects actually inserted or updated rows
+                # when using ON CONFLICT DO UPDATE ... WHERE ...
+                total_upserted += result.rowcount
+
+            # ======================================================
+            # CLEANUP
+            # ======================================================
+            conn.execute(text(f'DROP TABLE IF EXISTS "{staging_table}"'))
+
+            total_deleted += delete_count
+
+    return total_upserted, total_deleted, total_rejected
